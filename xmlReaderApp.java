@@ -1,6 +1,7 @@
 import org.w3c.dom.*;
 import javax.xml.parsers.*;
 import java.io.File;
+import java.util.Scanner;
 
 public class xmlReaderApp {
     public static void main(String[] args) {
@@ -27,33 +28,58 @@ public class xmlReaderApp {
             // Check if we have any 'record' entries
             if (nodeList.getLength() == 0) {
                 System.out.println("No 'record' elements found in the XML.");
+                return;
             }
 
-            // Iterate through the list and print each element's field values
+            // Prompt user for the fields they want to print
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Which fields would you like to print?");
+            System.out.println("Options: name, postalZip, region, country, address, list");
+            System.out.print("Enter comma-separated fields: ");
+            String userInput = scanner.nextLine();
+
+            // Split the input into an array of fields to print
+            String[] fieldsToPrint = userInput.split(",");
+
+            // Iterate through the list and print each element's selected field values
             for (int i = 0; i < nodeList.getLength(); i++) {
                 Node node = nodeList.item(i);
 
                 if (node.getNodeType() == Node.ELEMENT_NODE) {
                     Element element = (Element) node;
 
-                    // Extract the field values for each <record>
-                    String name = element.getElementsByTagName("name").item(0).getTextContent();
-                    String postalZip = element.getElementsByTagName("postalZip").item(0).getTextContent();
-                    String region = element.getElementsByTagName("region").item(0).getTextContent();
-                    String country = element.getElementsByTagName("country").item(0).getTextContent();
-                    String address = element.getElementsByTagName("address").item(0).getTextContent();
-                    String list = element.getElementsByTagName("list").item(0).getTextContent();
-
-                    // Print the field values to the console
-                    System.out.println("Name: " + name);
-                    System.out.println("Postal Code: " + postalZip);
-                    System.out.println("Region: " + region);
-                    System.out.println("Country: " + country);
-                    System.out.println("Address: " + address);
-                    System.out.println("List: " + list);
-                    System.out.println();
+                    // For each selected field, print the corresponding value
+                    for (String field : fieldsToPrint) {
+                        field = field.trim();  // Remove any extra spaces
+                        switch (field) {
+                            case "name":
+                                System.out.println("Name: " + element.getElementsByTagName("name").item(0).getTextContent());
+                                break;
+                            case "postalZip":
+                                System.out.println("Postal Code: " + element.getElementsByTagName("postalZip").item(0).getTextContent());
+                                break;
+                            case "region":
+                                System.out.println("Region: " + element.getElementsByTagName("region").item(0).getTextContent());
+                                break;
+                            case "country":
+                                System.out.println("Country: " + element.getElementsByTagName("country").item(0).getTextContent());
+                                break;
+                            case "address":
+                                System.out.println("Address: " + element.getElementsByTagName("address").item(0).getTextContent());
+                                break;
+                            case "list":
+                                System.out.println("List: " + element.getElementsByTagName("list").item(0).getTextContent());
+                                break;
+                            default:
+                                System.out.println("Invalid field: " + field);
+                        }
+                    }
+                    System.out.println(); // Blank line between records
                 }
             }
+
+            scanner.close(); // Close the scanner after use
+
         } catch (Exception e) {
             System.out.println("An error occurred:");
             e.printStackTrace();
