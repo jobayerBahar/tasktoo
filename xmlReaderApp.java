@@ -1,4 +1,5 @@
-import org.w3c.dom.*;
+import org.xml.sax.*;
+import org.xml.sax.helpers.*;
 import javax.xml.parsers.*;
 import java.io.File;
 import java.util.Scanner;
@@ -11,18 +12,54 @@ public class xmlReaderApp {
             // Replace with your XML file's path
             File file = new File("practical_2.xml");
 
-            // Initialize a DocumentBuilderFactory and parse the file
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document doc = builder.parse(file);
-            doc.getDocumentElement().normalize(); // Normalize the document
-
-            // Get all "record" elements from the XML (change "record" to your XML structure)
-            NodeList nodeList = doc.getElementsByTagName("record");
+            // Initialize SAXParserFactory and create SAXParser
+            SAXParserFactory factory = SAXParserFactory.newInstance();
+            SAXParser saxParser = factory.newSAXParser();
 
             // Create a Gson object for later conversion to JSON
             Gson gson = new Gson();
             Scanner scanner = new Scanner(System.in);
+
+            // SAX handler that processes XML elements
+            DefaultHandler handler = new DefaultHandler() {
+                HashMap<String, String> recordMap = new HashMap<>();
+                String currentElement = "";
+                boolean isFieldValid = true;
+
+                // Start of element
+                public void startElement(String uri, String localName, String qName, Attributes attributes) {
+                    currentElement = qName;
+                }
+
+                // End of element
+                public void endElement(String uri, String localName, String qName) {
+                    if (qName.equals("record")) {
+                        // Once a record element ends, output its data as JSON
+                        String jsonOutput = gson.toJson(recordMap);
+                        System.out.println(jsonOutput);
+                        recordMap.clear();  // Clear record map for the next record
+                    }
+                }
+
+                // Handle element content
+                public void characters(char[] ch, int start, int length) {
+                    String data = new String(ch, start, length).trim();
+
+                    if (!data.isEmpty() && isFieldValid) {
+                        if (currentElement.equals("name") || currentElement.equals("postalZip") ||
+                            currentElement.equals("region") || currentElement.equals("country") ||
+                            currentElement.equals("address") || currentElement.equals("list")) {
+                            recordMap.put(currentElement, data);  // Add the field value to the map
+                        }
+                    }
+                }
+
+                // Method to handle invalid field
+                public void error(SAXParseException e) {
+                    isFieldValid = false;
+                    System.out.println("Error: " + e.getMessage());
+                }
+            };
 
             while (true) {
                 // Prompt the user to enter comma-separated field names or type "exit" to quit
@@ -42,17 +79,13 @@ public class xmlReaderApp {
                 boolean invalidFieldFound = false;
                 HashMap<String, String> missingFields = new HashMap<>();
 
-                // Pre-check if any requested fields do not exist in the XML structure
+                // Check if any requested fields do not exist in the XML structure
                 for (String field : fieldsToInclude) {
                     boolean fieldExists = false;
-                    for (int i = 0; i < nodeList.getLength(); i++) {
-                        Node node = nodeList.item(i);
-                        if (node.getNodeType() == Node.ELEMENT_NODE) {
-                            Element element = (Element) node;
-                            if (element.getElementsByTagName(field).getLength() > 0) {
-                                fieldExists = true;
-                                break;
-                            }
+                    for (String validField : new String[]{"name", "postalZip", "region", "country", "address", "list"}) {
+                        if (field.equals(validField)) {
+                            fieldExists = true;
+                            break;
                         }
                     }
                     if (!fieldExists) {
@@ -67,39 +100,16 @@ public class xmlReaderApp {
                     continue; // Skip to the next iteration and prompt the user again
                 }
 
-                // Process each record and output the selected fields in JSON format
-                for (int i = 0; i < nodeList.getLength(); i++) {
-                    Node node = nodeList.item(i);
-
-                    if (node.getNodeType() == Node.ELEMENT_NODE) {
-                        Element element = (Element) node;
-
-                        // Create a HashMap to store the field names and their values for this record
-                        HashMap<String, String> recordMap = new HashMap<>();
-
-                        // Loop through each requested field
-                        for (String field : fieldsToInclude) {
-                            field = field.trim(); // Trim any spaces around field names
-
-                            // Check if the field exists and add it to the map
-                            if (element.getElementsByTagName(field).getLength() > 0) {
-                                String fieldValue = element.getElementsByTagName(field).item(0).getTextContent();
-                                recordMap.put(field, fieldValue);
-                            } else {
-                                // If field doesn't exist, add the error message
-                                recordMap.put(field, "Error: Field not found");
-                            }
-                        }
-
-                        // Convert the HashMap to a JSON string and print it
-                        String jsonOutput = gson.toJson(recordMap);
-                        System.out.println(jsonOutput);
-                    }
+                // Process the XML using SAX parser
+                try {
+                    // Parse the XML file using SAX
+                    saxParser.parse(file, handler);
+                } catch (Exception e) {
+                    System.out.println("Error during parsing: " + e.getMessage());
                 }
 
                 // Exit the loop after processing the valid fields
                 break;
-
             }
 
         } catch (Exception e) {
